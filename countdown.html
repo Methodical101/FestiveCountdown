@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Holiday Event Countdown</title>
+    <!-- Google Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap" rel="stylesheet">
+
+    <style>
+      :root{
+        --accent:#d62828;
+        --accent-2:#f77f00;
+        --bg:#8cc8ec;
+        --text:#003049;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body {
+        margin: 0;
+        font-family: "Mountains of Christmas", cursive, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue";
+        background: linear-gradient(180deg,var(--bg),#dde8f0 80%);
+        color: var(--text);
+        -webkit-font-smoothing:antialiased;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+      }
+
+      .wrap{
+        width: min(920px, 95%);
+        padding: 28px 22px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.06);
+        background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.9));
+        border-radius: 18px;
+        text-align: center;
+      }
+
+      h1{
+        margin:0 0 12px 0;
+        font-size:56px;
+        color:var(--accent);
+        line-height:1.05;
+      }
+
+      #countdown{
+        font-size:72px;
+        margin:8px 0 18px;
+        font-weight:700;
+      }
+
+      .target-label{
+        font-size:24px;
+        color: rgba(0,48,73,0.8);
+        margin-bottom:24px;
+      }
+      /* Reindeer bobbing when using canvas (or emoji) */
+      .reindeer.bob{animation: bob 1.2s ease-in-out infinite}
+      .reindeer.celebrate{animation: celebrate-bob 900ms ease-in-out infinite}
+
+      /* Progress bar */
+      .progress-container{
+        width:95%;
+        max-width:820px;
+        margin: 0 auto 26px;
+        background: #fff;
+        border-radius: 20px;
+        border: 2px solid #669bbc;
+        height: 36px;
+        position: relative;
+        overflow: visible;
+      }
+      /* inner track keeps the rounded clipping while allowing overflow for the reindeer */
+      .progress-track{
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        overflow: hidden;
+        z-index: 1;
+      }
+      .progress-bar{
+        height:100%;
+        width:0%;
+        background: linear-gradient(90deg,var(--accent),var(--accent-2));
+        transition: width 0.5s linear;
+        border-radius: 999px; /* keep fill rounded */
+      }
+
+      /* Reindeer rider */
+      .reindeer{
+        position: absolute;
+        top: 50%;
+        left: 0px;
+        transform: translate(-50%, -50%);
+        font-size: 84px;
+        pointer-events: none;
+        z-index: 3;
+        transition: left 0.45s linear, transform 220ms ease;
+        text-shadow: 0 6px 18px rgba(0,0,0,0.28);
+        will-change: left, transform;
+      }
+
+      .reindeer .ride{
+        display:inline-block;
+        will-change:transform;
+        animation: bob 1.2s ease-in-out infinite;
+        transform-origin: 50% 50%;
+        font-size: 1em;
+        line-height: 1;
+      }
+
+      .reindeer.celebrate .ride{animation: celebrate-bob 900ms ease-in-out infinite;}
+
+      @keyframes bob{
+        0%{transform: translateY(0) rotate(0deg)}
+        50%{transform: translateY(-6px) rotate(-3deg)}
+        100%{transform: translateY(0) rotate(0deg)}
+      }
+
+      @keyframes celebrate-bob{
+        0%{transform: translateY(0) scale(1.04)}
+        40%{transform: translateY(-10px) scale(1.14) rotate(-6deg)}
+        80%{transform: translateY(-6px) scale(1.08) rotate(3deg)}
+        100%{transform: translateY(0) scale(1.04)}
+      }
+
+      /* Snow animation */
+      .snowflake{
+        position:fixed;
+        top:-5vh;
+        color:rgba(255,255,255,0.95);
+        font-size:1.1rem;
+        pointer-events:none;
+        user-select:none;
+        will-change:transform,opacity;
+      }
+
+      @keyframes fall{
+        0%{transform:translateY(-10vh) translateX(0) rotate(0deg); opacity:0}
+        10%{opacity:0.9}
+        /* use CSS variable to allow per-flake horizontal drift (can be negative) */
+        100%{transform:translateY(110vh) translateX(var(--drift,20vw)) rotate(360deg); opacity:0.9}
+      }
+
+      /* Responsive tweaks */
+      /* Responsive tweaks */
+      @media (max-width:900px){
+        h1{font-size:40px}
+        #countdown{font-size:44px}
+        .progress-container{height:30px}
+      }
+
+      @media (max-width:600px){
+        .wrap{padding:18px}
+        h1{font-size:28px}
+        #countdown{font-size:36px}
+        .progress-container{height:20px;border-radius:12px}
+        .reindeer{font-size:48px}
+      }
+
+      /* Celebration overlay */
+      .celebration{
+        position:fixed;
+        inset:0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background: rgba(0,0,0,0.5);
+        z-index:9999;
+        opacity:0;
+        pointer-events:none;
+        transition:opacity 240ms ease-in-out;
+      }
+      .celebration.show{opacity:1;pointer-events:auto}
+      .celebration-card{
+        background: #fff;
+        padding: 28px 26px;
+        border-radius:14px;
+        text-align:center;
+        box-shadow: 0 12px 40px rgba(0,0,0,0.25);
+        transform:translateY(-6px);
+        animation: pop 420ms cubic-bezier(.2,.9,.2,1) both;
+      }
+      .celebration-card h2{margin:0 0 8px;font-size:34px}
+      .celebration-card p{margin:0 0 8px;color:var(--text)}
+
+      @keyframes pop{from{opacity:0;transform:translateY(6px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+      /* details/footer removed (no text below progress bar) */
+    </style>
+  </head>
+
+  <body>
+    <div class="wrap">
+      <h1>🎄 Holiday Event Countdown 🎄</h1>
+      <div id="countdown" aria-live="polite">--</div>
+      <div id="targetLabel" class="target-label" aria-hidden="true"></div>
+
+      <!-- Progress bar -->
+      <div class="progress-container" aria-hidden="true">
+        <div class="progress-track"><div class="progress-bar" id="progressBar"></div></div>
+        <div id="reindeer" class="reindeer" aria-hidden="true">
+          <span class="ride" aria-hidden="true">🦌</span>
+        </div>
+      </div>
+
+      <!-- Celebration overlay (hidden until event) -->
+      <div id="celebration" class="celebration" aria-hidden="true">
+        <div class="celebration-card" role="dialog" aria-modal="true">
+          <h2>🎉 The Event is LIVE! 🎉</h2>
+          <p>Enjoy the celebration — thank you for joining us.</p>
+        </div>
+      </div>
+
+      <!-- details/footer intentionally removed to keep layout minimal -->
+    </div>
+
+    <script>
+      // Countdown + progress logic
+      (function(){
+        const countdownEl = document.getElementById('countdown');
+        const progressEl = document.getElementById('progressBar');
+        const progressContainer = document.querySelector('.progress-container');
+        const reindeerEl = document.getElementById('reindeer');
+        const reindeerRide = reindeerEl ? reindeerEl.querySelector('.ride') : null;
+        const targetLabelEl = document.getElementById('targetLabel');
+
+        // Event: Dec 15, 2025 at 17:30 (5:30 PM)
+        const eventDate = new Date('December 15, 2025 17:30:00').getTime();
+        // Use a fixed 20-day window before the event as the countdown period.
+        // Progress is 0% before that window, and grows to 100% at the event.
+        const DAYS_WINDOW = 20;
+        const MS_PER_DAY = 24 * 60 * 60 * 1000;
+        const windowMs = Math.max(1, DAYS_WINDOW * MS_PER_DAY);
+        const startTime = eventDate - windowMs; // start = event - 20 days
+        const totalTime = windowMs; // total window length is 20 days
+
+        function formatTargetLabel(ts){
+          try{
+            const d = new Date(ts);
+            return d.toLocaleString(undefined, { month:'short', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit' });
+          }catch(e){
+            return '';
+          }
+        }
+
+        // show target label
+        if(targetLabelEl){
+          targetLabelEl.textContent = formatTargetLabel(eventDate);
+        }
+
+        // update logic
+        function update(){
+          const now = Date.now();
+          const diff = eventDate - now;
+
+          if(diff <= 0){
+            countdownEl.textContent = '🎉 The Event is LIVE! 🎉';
+            progressEl.style.width = '100%';
+            clearInterval(interval);
+            // stop snow and show celebration
+            if(typeof snowInterval !== 'undefined' && snowInterval){
+              clearInterval(snowInterval);
+            }
+            // remove any existing snowflakes
+            document.querySelectorAll('.snowflake').forEach(n => n.remove());
+            // position reindeer at end and add small celebrate effect
+            if(reindeerEl && progressContainer){
+              const cw = progressContainer.clientWidth;
+              const rHalf = Math.max(12, reindeerEl.offsetWidth / 2);
+              reindeerEl.style.left = (cw - rHalf) + 'px';
+              reindeerEl.classList.add('celebrate');
+
+              // keep native emoji rendering; do not force transform
+            }
+            showCelebration();
+            return;
+          }
+
+          const days = Math.floor(diff / (1000*60*60*24));
+          const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+          const minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
+          const seconds = Math.floor((diff % (1000*60)) / 1000);
+
+          countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+          const timePassed = now - startTime;
+          let percent = (timePassed / totalTime) * 100; // percent of period elapsed
+          percent = Math.max(0, Math.min(100, percent));
+          progressEl.style.width = percent + '%';
+          // Move reindeer along the bar using pixel math so it's not clipped by borders.
+          if(reindeerEl && progressContainer){
+            const cw = progressContainer.clientWidth;
+            const rHalf = Math.max(12, reindeerEl.offsetWidth / 2);
+            const desired = (percent / 100) * cw;
+            const clamped = Math.max(rHalf, Math.min(cw - rHalf, desired));
+            // position using pixels so the emoji doesn't get clipped by border
+            reindeerEl.style.left = clamped + 'px';
+            // force horizontal flip using transform: scaleX(-1)
+            if(reindeerRide){
+              // keep native emoji rendering; do not force transform
+              reindeerRide.style.removeProperty('--flip');
+            }
+          }
+        }
+
+        const interval = setInterval(update, 1000);
+        update();
+
+        // Snow
+        function createSnowflake(){
+          const snow = document.createElement('div');
+          snow.className = 'snowflake';
+          snow.textContent = '❄';
+            // allow flakes to start slightly off-screen and drift left/right
+            const left = Math.random() * 120 - 10; // range: -10vw .. 110vw
+            const size = 0.8 + Math.random() * 1.6; // scale
+            const duration = 6 + Math.random() * 8; // seconds
+            // horizontal drift: -20vw .. +20vw
+            const drift = (Math.random() * 40) - 20;
+            snow.style.left = left + 'vw';
+            snow.style.setProperty('--drift', drift + 'vw');
+            snow.style.fontSize = (12 * size) + 'px';
+            snow.style.animation = `fall ${duration}s linear forwards`;
+            snow.style.opacity = 0.6 + Math.random() * 0.4;
+          document.body.appendChild(snow);
+
+          setTimeout(()=> snow.remove(), duration * 1000 + 200);
+        }
+
+        // Throttle snow creation slightly to keep performance good
+        const snowInterval = setInterval(createSnowflake, 100);
+
+        // Celebration overlay handling
+        function showCelebration(){
+          let el = document.getElementById('celebration');
+          if(!el) return;
+          el.classList.add('show');
+        }
+
+        // Canvas-only flip implementation (improved): draw centered, high-DPI canvas
+        let canvasEl = null;
+
+        function clearCanvas(){
+          if(canvasEl && canvasEl.parentNode){
+            canvasEl.parentNode.removeChild(canvasEl);
+            canvasEl = null;
+            if(reindeerRide) reindeerRide.style.display = '';
+            reindeerEl.classList.remove('bob');
+          }
+        }
+
+        function applyCanvas(){
+          clearCanvas();
+          if(!reindeerRide || !reindeerEl) return;
+          // hide the native span while using canvas
+          reindeerRide.style.display = 'none';
+          // get size from the reindeer element so canvas matches its visual box
+          const rect = reindeerEl.getBoundingClientRect();
+          // fallback to font-size if width is zero
+          const computed = getComputedStyle(reindeerEl);
+          const fontSize = parseFloat(computed.fontSize) || 84;
+          const w = Math.max(40, Math.round(rect.width || fontSize * 1.4));
+          const h = Math.max(40, Math.round(rect.height || fontSize * 1.1));
+          const dpr = window.devicePixelRatio || 1;
+
+          canvasEl = document.createElement('canvas');
+          canvasEl.width = Math.round(w * dpr);
+          canvasEl.height = Math.round(h * dpr);
+          canvasEl.style.width = w + 'px';
+          canvasEl.style.height = h + 'px';
+          canvasEl.style.position = 'absolute';
+          canvasEl.style.left = '50%';
+          canvasEl.style.top = '50%';
+          canvasEl.style.transform = 'translate(-50%, -50%)';
+          canvasEl.style.pointerEvents = 'none';
+          canvasEl.style.zIndex = '4';
+
+          const ctx = canvasEl.getContext('2d');
+          ctx.scale(dpr, dpr);
+          ctx.clearRect(0,0,w,h);
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'center';
+          // choose a font size that fills the canvas height appropriately
+          const emojiFont = Math.round(h * 0.9);
+          ctx.font = `${emojiFont}px serif`;
+          const emoji = reindeerRide.textContent || '🦌';
+          // draw flipped horizontally around center
+          ctx.save();
+          ctx.translate(w/2, h/2);
+          ctx.scale(-1, 1);
+          ctx.fillText(emoji, 0, 0);
+          ctx.restore();
+
+          reindeerEl.appendChild(canvasEl);
+          // make reindeerEl animate so canvas follows bobbing
+          reindeerEl.classList.add('bob');
+        }
+
+        // initialize canvas method and redraw on resize
+        applyCanvas();
+        window.addEventListener('resize', ()=>{
+          applyCanvas();
+        });
+      })();
+    </script>
+  </body>
+</html>
+
