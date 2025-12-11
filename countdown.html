@@ -230,11 +230,11 @@
         const eventDate = new Date('December 15, 2025 17:30:00').getTime();
         // Use a fixed 20-day window before the event as the countdown period.
         // Progress is 0% before that window, and grows to 100% at the event.
-        const DAYS_WINDOW = 5;
+        const DAYS_WINDOW = 7;
         const MS_PER_DAY = 24 * 60 * 60 * 1000;
         const windowMs = Math.max(1, DAYS_WINDOW * MS_PER_DAY);
-        const startTime = eventDate - windowMs; // start = event - 5 days
-        const totalTime = windowMs; // total window length is 5 days
+        const startTime = eventDate - windowMs; // start = event - 7 days
+        const totalTime = windowMs; // total window length is 7 days
 
         function formatTargetLabel(ts){
           try{
